@@ -1,0 +1,229 @@
+Upgrade the existing InsightAI application to Version 3 by adding advanced conversational analytics features and executive-level insights.
+
+IMPORTANT
+Do not rebuild the application from scratch. Extend the current system and keep the existing chat + dashboard layout.
+
+The goal of this version is to transform InsightAI into a true AI-powered business analyst that can explain insights, suggest further analysis, and generate downloadable business reports.
+
+---
+
+CORE FEATURES TO ADD
+
+1. Conversational Dashboard Updates
+2. AI Insight Summary
+3. Business Report Generator
+4. Smart Query Suggestions
+5. Dataset Intelligence
+
+---
+
+FEATURE 1 – CONVERSATIONAL DASHBOARD UPDATES
+
+The dashboard must support follow-up queries within the same chat session.
+
+When the user asks a follow-up question, the system should update or modify the existing dashboard instead of creating a new one.
+
+Example conversation:
+
+User:
+Show monthly revenue by region
+
+AI:
+Displays line chart.
+
+User:
+Now filter this to only show East region
+
+AI:
+Dashboard updates to filtered data.
+
+User:
+Compare Q2 vs Q3
+
+AI:
+Adds comparison chart.
+
+User:
+Show top 5 campaigns
+
+AI:
+Updates dashboard accordingly.
+
+The system must maintain dashboard context during the conversation.
+
+---
+
+FEATURE 2 – AI INSIGHT SUMMARY
+
+After generating a dashboard, automatically display an AI-generated insight summary.
+
+Place this section above or beside the charts.
+
+Example:
+
+Insight Summary
+
+• East region generated the highest revenue.
+• Influencer campaigns perform best with Gen-Z audience.
+• Revenue increased by 22% from Q2 to Q3.
+
+This should be generated automatically from the query result.
+
+---
+
+FEATURE 3 – BUSINESS REPORT GENERATOR
+
+Add a button labeled:
+
+Generate Business Report
+
+When clicked, the system should generate a structured business report based on the dashboard data.
+
+Report format:
+
+Title
+
+Executive Summary
+
+Key Findings
+
+Data Highlights
+
+Business Recommendations
+
+Allow users to download the report as:
+
+Markdown (.md)
+
+The report should summarize the key insights from the charts.
+
+---
+
+FEATURE 4 – SMART QUERY SUGGESTIONS
+
+After generating a dashboard, display suggested follow-up queries.
+
+Example:
+
+Suggested Analysis
+
+• Compare revenue by customer segment
+• Show top 5 campaigns
+• Analyze monthly revenue trend
+
+These suggestions must appear as clickable buttons.
+
+When clicked, the dashboard updates accordingly.
+
+---
+
+FEATURE 5 – DATASET INTELLIGENCE
+
+When a dataset is uploaded, automatically analyze it.
+
+Display a dataset summary panel showing:
+
+Number of rows
+
+Number of columns
+
+Detected numeric metrics
+
+Detected categorical fields
+
+Example:
+
+Dataset Summary
+
+Rows: 12,000
+Columns: 6
+
+Detected Metrics: Revenue
+Detected Dimensions: Region, Campaign_Type, Customer_Segment
+
+Suggested questions:
+
+• Show revenue by campaign type
+• Compare customer segments
+• Monthly revenue trend
+
+---
+
+CHAT INTERFACE IMPROVEMENTS
+
+Ensure proper alignment between chat and dashboard.
+
+Layout:
+
+Left Panel – Conversational Chat
+Right Panel – Dashboard Visualization
+
+Recommended layout ratio:
+
+Chat panel width: 35%
+Dashboard width: 65%
+
+The chat interface must include:
+
+Conversation history
+User messages
+AI responses
+Suggested queries
+
+---
+
+DASHBOARD INTERACTIVITY
+
+Charts must support:
+
+Hover tooltips
+Legend toggling
+Interactive filtering
+Responsive resizing
+
+Use a grid layout for multiple charts.
+
+---
+
+PIPELINE VISUALIZATION
+
+Keep the existing pipeline visualization but integrate it with conversational queries.
+
+Display steps:
+
+Understanding prompt
+Generating SQL
+Fetching data
+Selecting chart type
+Updating dashboard
+
+Show loading states during each step.
+
+---
+
+ERROR HANDLING
+
+If the user asks about a field not present in the dataset:
+
+Explain the issue clearly.
+
+Example:
+
+"I could not find a 'Product' column in the dataset."
+
+Then show available columns and suggest valid queries.
+
+---
+
+EXPORT OPTIONS
+
+Allow users to export:
+
+Dashboard charts as images
+Business report as markdown file
+
+---
+
+GOAL
+
+Upgrade InsightAI into a conversational AI-powered business intelligence assistant that not only generates dashboards but also explains insights, suggests further analysis, and produces executive-level reports.
