@@ -209,8 +209,10 @@ export default async function analyzeQueryHandler(req: Request, res: Response) {
   try {
     const { query, columns, sampleData, conversationHistory } = req.body;
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server" });
+    const GROK_API_KEY = process.env.GROK_API_KEY;
+
+    if (!GEMINI_API_KEY && !GROK_API_KEY) {
+      res.status(500).json({ error: "No AI API keys configured (GEMINI_API_KEY or GROK_API_KEY required)" });
       return;
     }
 
@@ -245,58 +247,114 @@ Sample rows: ${JSON.stringify(sampleData?.slice(0, 8))}`;
       parts: [{ text: `${systemPrompt}\n\nUser question: "${query}"` }],
     });
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: messages,
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                sql: { type: "STRING", description: "The SQL query to answer the question" },
-                message: { type: "STRING", description: "A short friendly explanation of the result in markdown" },
-                charts: {
-                  type: "ARRAY",
-                  items: {
-                    type: "OBJECT",
-                    properties: {
-                      type: { type: "STRING", enum: ["line", "bar", "pie", "area"] },
-                      title: { type: "STRING" },
-                      data: {
-                        type: "ARRAY",
-                        items: {
-                          type: "OBJECT",
-                          properties: {
-                            name: { type: "STRING" },
-                            value: { type: "NUMBER" },
+    let response;
+    let aiProvider = "Gemini";
+
+    // Try Gemini first
+    if (GEMINI_API_KEY) {
+      console.log("Attempting to use Gemini API...");
+      try {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: messages,
+              generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: "OBJECT",
+                  properties: {
+                    sql: { type: "STRING", description: "The SQL query to answer the question" },
+                    message: { type: "STRING", description: "A short friendly explanation of the result in markdown" },
+                    charts: {
+                      type: "ARRAY",
+                      items: {
+                        type: "OBJECT",
+                        properties: {
+                          type: { type: "STRING", enum: ["line", "bar", "pie", "area"] },
+                          title: { type: "STRING" },
+                          data: {
+                            type: "ARRAY",
+                            items: {
+                              type: "OBJECT",
+                              properties: {
+                                name: { type: "STRING" },
+                                value: { type: "NUMBER" },
+                              },
+                              required: ["name"],
+                            },
                           },
-                          required: ["name"],
+                          keys: { type: "ARRAY", items: { type: "STRING" } },
                         },
+                        required: ["type", "title", "data", "keys"],
                       },
-                      keys: { type: "ARRAY", items: { type: "STRING" } },
                     },
-                    required: ["type", "title", "data", "keys"],
+                    table: {
+                      type: "ARRAY",
+                      items: { type: "OBJECT" },
+                    },
                   },
-                },
-                table: {
-                  type: "ARRAY",
-                  items: { type: "OBJECT" },
+                  required: ["sql", "message", "charts", "table"],
                 },
               },
-              required: ["sql", "message", "charts", "table"],
-            },
-          },
-        }),
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Gemini API error:", response.status, errorText);
+          throw new Error(`Gemini error: ${response.status}`);
+        }
+      } catch (e) {
+        console.error("Gemini failed:", e);
+        if (GROK_API_KEY) {
+          console.log("Falling back to Grok API...");
+          aiProvider = "Grok";
+          // Fall through to use Grok
+        } else {
+          throw e;
+        }
       }
-    );
+    }
+
+    // Fall back to Grok if Gemini failed or not available
+    if (aiProvider === "Grok" || !response) {
+      if (!GROK_API_KEY) {
+        throw new Error("Grok API key not configured");
+      }
+
+      response = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${GROK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "grok-2",
+          messages: [
+            {
+              role: "user",
+              content: `${systemPrompt}\n\nUser question: "${query}"\n\nRespond with ONLY valid JSON in this format:\n{\n  "sql": "SELECT...",\n  "message": "explanation",\n  "charts": [{...}],\n  "table": [{...}]\n}`,
+            },
+          ],
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Grok API error:", response.status, errorText);
+        res.status(500).json({ error: "AI service error", provider: "Grok", details: errorText });
+        return;
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Gemini API error:", response.status, errorText);
+      console.error(`${aiProvider} API error:`, response.status, errorText);
 
       if (response.status === 429) {
         res.status(429).json({ error: "Rate limit exceeded. Please try again in a moment." });
@@ -306,15 +364,22 @@ Sample rows: ${JSON.stringify(sampleData?.slice(0, 8))}`;
         res.status(503).json({ error: "AI is busy right now. Please retry in a few seconds." });
         return;
       }
-      res.status(500).json({ error: "AI service error", details: errorText });
+      res.status(500).json({ error: "AI service error", provider: aiProvider, details: errorText });
       return;
     }
 
-    const geminiResponse = await response.json();
-    const textContent = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+    let textContent: string;
+
+    if (aiProvider === "Grok") {
+      const grokResponse = await response.json();
+      textContent = grokResponse.choices?.[0]?.message?.content;
+    } else {
+      const geminiResponse = await response.json();
+      textContent = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
 
     if (!textContent) {
-      throw new Error("No content in AI response");
+      throw new Error(`No content in ${aiProvider} response`);
     }
 
     const parsed = JSON.parse(textContent) as QueryResult;
@@ -334,6 +399,7 @@ Sample rows: ${JSON.stringify(sampleData?.slice(0, 8))}`;
       keyFindings,
       recommendations,
       querySuggestions,
+      provider: aiProvider,
     });
   } catch (e) {
     console.error("analyze-query error:", e);

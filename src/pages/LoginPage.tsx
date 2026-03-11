@@ -2,15 +2,37 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Store user in localStorage (basic auth)
+    localStorage.setItem("user", JSON.stringify({ email, password }));
     navigate("/app");
+  };
+
+  const handleGoogleSuccess = (credentialResponse: any) => {
+    try {
+      const decoded = jwtDecode<any>(credentialResponse.credential);
+      // Store Google user info in localStorage
+      localStorage.setItem("user", JSON.stringify({
+        email: decoded.email,
+        name: decoded.name,
+        picture: decoded.picture,
+        provider: "google",
+      }));
+      navigate("/app");
+    } catch (error) {
+      console.error("Google login failed:", error);
+    }
   };
 
   return (
@@ -113,6 +135,8 @@ export default function LoginPage() {
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     className="w-full bg-muted/50 border border-border/50 rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all"
                   />
@@ -125,6 +149,8 @@ export default function LoginPage() {
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full bg-muted/50 border border-border/50 rounded-xl pl-10 pr-11 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all"
                   />
@@ -145,6 +171,27 @@ export default function LoginPage() {
                 {isSignUp ? "Create Account" : "Sign In"}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </button>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border/30" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-glass-panel px-2 text-muted-foreground">Or continue with</span>
+                </div>
+              </div>
+
+              {/* Google Sign-In Button */}
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => console.log("Login Failed")}
+                  text="continue_with"
+                  locale="en_US"
+                  theme="dark"
+                />
+              </div>
             </form>
 
             <div className="mt-6 text-center">
