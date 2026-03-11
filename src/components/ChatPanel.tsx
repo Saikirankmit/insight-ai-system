@@ -10,6 +10,65 @@ import { PIPELINE_STEPS, type PipelineStep } from "@/lib/mockData";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
+// Detect dashboard action from user query and conversation context
+function detectDashboardAction(
+  query: string,
+  chatMessages: ChatMessage[]
+): "add" | "modify" | "filter" | "reset" {
+  const queryLower = query.toLowerCase();
+
+  // Reset patterns
+  if (
+    queryLower.includes("clear") ||
+    queryLower.includes("start over") ||
+    queryLower.includes("new analysis") ||
+    queryLower.includes("fresh start")
+  ) {
+    return "reset";
+  }
+
+  // Filter patterns
+  if (
+    queryLower.includes("only") ||
+    queryLower.includes("filter") ||
+    queryLower.includes("show for") ||
+    queryLower.includes("limit to") ||
+    queryLower.includes("where") ||
+    queryLower.includes("exclude")
+  ) {
+    return "filter";
+  }
+
+  // Modify/refine patterns
+  if (
+    queryLower.includes("it,") ||
+    queryLower.includes("this") ||
+    queryLower.includes("that") ||
+    queryLower.includes("break") ||
+    queryLower.includes("drill") ||
+    queryLower.includes("deeper") ||
+    queryLower.includes("more detail") ||
+    queryLower.includes("expand") ||
+    queryLower.includes("refine")
+  ) {
+    return "modify";
+  }
+
+  // Compare patterns (add a new comparison chart)
+  if (
+    queryLower.includes("compare") ||
+    queryLower.includes("versus") ||
+    queryLower.includes(" vs ") ||
+    queryLower.includes("difference") ||
+    queryLower.includes("alongside")
+  ) {
+    return "add";
+  }
+
+  // Default: add new chart if there are previous messages (conversation ongoing)
+  return chatMessages.length > 0 ? "add" : "reset";
+}
+
 export function ChatPanel() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +80,7 @@ export function ChatPanel() {
     chatMessages,
     addChatMessage,
     setCurrentDashboard,
+    mergeDashboard,
     clearChat,
     columns,
     dataset,
@@ -142,8 +202,17 @@ export function ChatPanel() {
         }
         setSteps((prev) => prev.map((s) => ({ ...s, status: "complete" as const })));
 
+        // Detect dashboard action based on user query and conversation context
+        const dashboardAction = detectDashboardAction(query, chatMessages);
+        
         const dashboardData = { sql: result.sql, charts: result.charts, table: result.table };
-        setCurrentDashboard(dashboardData);
+
+        // Use mergeDashboard for smart evolution or setCurrentDashboard for fresh start
+        if (dashboardAction === "reset" || !chatMessages.length) {
+          setCurrentDashboard(dashboardData);
+        } else {
+          mergeDashboard(dashboardAction, dashboardData);
+        }
 
         // Set insights and suggestions from V3 features
         if (result.insights || result.keyFindings || result.recommendations) {
