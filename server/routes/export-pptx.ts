@@ -266,71 +266,94 @@ function addBarChartVisualization(
   w: number,
   h: number
 ) {
-  const data = chart.data.slice(0, 10);
+  const data = chart.data.slice(0, 12);
   if (data.length === 0) return;
 
-  const barHeight = Math.min(0.4, (h - 0.5) / data.length);
-  const labelWidth = 2;
-  const chartWidth = w - labelWidth - 0.3;
-
-  // Find max value for scaling
+  // Vertical (column) bar chart
+  const labels = data.map((d: any) => String(d.name || "").substring(0, 12));
   const values = data.map((d: any) => {
     const keys = Object.keys(d).filter((k) => k !== "name");
     return Number(d[keys[0]] || 0);
   });
+
+  const barWidth = w / data.length - 0.1;
   const maxValue = Math.max(...values);
-  const scale = (maxValue > 0 ? chartWidth / maxValue : 1);
+  const chartHeight = h * 0.85;
+  const valueRange = maxValue > 0 ? maxValue : 1;
 
-  // Draw bars
-  data.forEach((row: any, index: number) => {
-    const barY = y + index * barHeight;
-    const keys = Object.keys(row).filter((k) => k !== "name");
-    const value = Number(row[keys[0]] || 0);
-    const barWidth = value * scale;
+  // Draw chart background
+  slide.addShape("rect", {
+    x,
+    y,
+    w,
+    h: chartHeight,
+    fill: { color: THEME.background },
+    line: { color: THEME.card, width: 1 },
+  });
 
-    // Bar label
-    slide.addText(String(row.name || "").substring(0, 15), {
+  // Draw grid lines
+  for (let i = 0; i <= 4; i++) {
+    const gridY = y + (chartHeight * i) / 4;
+    const gridValue = maxValue - (maxValue * i) / 4;
+    
+    slide.addShape("line", {
       x,
-      y: barY,
-      w: labelWidth,
-      h: barHeight,
-      fontSize: 9,
-      color: THEME.text,
+      y: gridY,
+      w,
+      h: 0,
+      line: { color: THEME.card, width: 1 },
+    });
+
+    slide.addText(String(gridValue.toFixed(0)), {
+      x: x - 0.4,
+      y: gridY - 0.15,
+      w: 0.35,
+      h: 0.3,
+      fontSize: 8,
+      color: THEME.textSecondary,
       align: "right",
-      valign: "middle",
       fontFace: "Arial",
     });
+  }
 
-    // Bar background
-    slide.addShape("rect", {
-      x: x + labelWidth + 0.1,
-      y: barY + barHeight / 4,
-      w: chartWidth,
-      h: barHeight / 2,
-      fill: { color: THEME.card },
-      line: { type: "none" },
-    });
+  // Draw bars (vertical)
+  data.forEach((row: any, index: number) => {
+    const value = values[index];
+    const barHeight = (value / valueRange) * chartHeight;
+    const barX = x + index * (w / data.length) + 0.05;
+    const barY = y + chartHeight - barHeight;
 
-    // Value bar
+    // Bar
     slide.addShape("rect", {
-      x: x + labelWidth + 0.1,
-      y: barY + barHeight / 4,
+      x: barX,
+      y: barY,
       w: barWidth,
-      h: barHeight / 2,
+      h: barHeight,
       fill: { color: THEME.accent },
       line: { type: "none" },
     });
 
-    // Value label
+    // Value label on top of bar
     slide.addText(String(value.toFixed(0)), {
-      x: x + labelWidth + 0.15 + barWidth,
-      y: barY,
-      w: 0.5,
-      h: barHeight,
+      x: barX,
+      y: barY - 0.25,
+      w: barWidth,
+      h: 0.2,
       fontSize: 8,
-      color: THEME.textSecondary,
-      align: "left",
-      valign: "middle",
+      color: THEME.accent,
+      align: "center",
+      fontFace: "Arial",
+    });
+
+    // X-axis label
+    slide.addText(labels[index], {
+      x: barX,
+      y: y + chartHeight + 0.1,
+      w: barWidth,
+      h: 0.3,
+      fontSize: 8,
+      color: THEME.text,
+      align: "center",
       fontFace: "Arial",
     });
   });
@@ -431,73 +454,97 @@ function addPieChartVisualization(
   w: number,
   h: number
 ) {
-  const data = chart.data.slice(0, 5);
+  const data = chart.data.slice(0, 6);
   if (data.length === 0) return;
 
-  // For pie chart, create a legend-style display since drawing actual pie is complex
   const values = data.map((d: any) => {
     const keys = Object.keys(d).filter((k) => k !== "name");
     return Number(d[keys[0]] || 0);
   });
   const total = values.reduce((a, b) => a + b, 0);
 
-  const colors = [THEME.accent, THEME.accentLight, THEME.accentLighter, "#FF85B4", "#FFB8D9"];
+  const colors = [THEME.accent, THEME.accentLight, THEME.accentLighter, "#FF85B4", "#FFB8D9", "#FFC9DC"];
 
-  // Create visual pie chart using segments
+  // Create visual pie chart with segments
+  const centerX = x + w * 0.32;
+  const centerY = y + h / 2;
+  const radius = Math.min(w * 0.25, h * 0.4);
+
+  // Draw pie segments
+  let currentAngle = -Math.PI / 2;
+  
+  data.forEach((row: any, index: number) => {
+    const value = values[index];
+    const sliceAngle = (value / total) * 2 * Math.PI;
+    const endAngle = currentAngle + sliceAngle;
+    const midAngle = (currentAngle + endAngle) / 2;
+
+    // Draw wedge using multiple rectangles
+    const steps = Math.max(3, Math.round(sliceAngle * 8));
+    for (let i = 0; i < steps; i++) {
+      const a1 = currentAngle + (sliceAngle * i) / steps;
+      const a2 = currentAngle + (sliceAngle * (i + 1)) / steps;
+      
+      const x1 = centerX + Math.cos(a1) * radius;
+      const y1 = centerY + Math.sin(a1) * radius;
+      const x2 = centerX + Math.cos(a2) * radius;
+      const y2 = centerY + Math.sin(a2) * radius;
+
+      slide.addShape("rect", {
+        x: Math.min(x1, x2),
+        y: Math.min(y1, y2),
+        w: Math.abs(x2 - x1) + 0.08,
+        h: Math.abs(y2 - y1) + 0.08,
+        fill: { color: colors[index % colors.length] },
+        line: { color: THEME.background, width: 1 },
+      });
+    }
+
+    currentAngle = endAngle;
+  });
+
+  // Draw legend entries
+  const legendX = x + w * 0.68;
+  const legendStartY = y;
+  const legendItemHeight = h / Math.max(data.length, 1);
+
   data.forEach((row: any, index: number) => {
     const value = values[index];
     const percent = total > 0 ? (value / total) * 100 : 0;
+    const legendY = legendStartY + index * legendItemHeight + 0.2;
 
-    // Color box
+    // Color dot
     slide.addShape("rect", {
-      x: x + 0.5,
-      y: y + index * 0.6,
-      w: 0.3,
-      h: 0.3,
+      x: legendX,
+      y: legendY,
+      w: 0.2,
+      h: 0.2,
       fill: { color: colors[index % colors.length] },
       line: { type: "none" },
     });
 
     // Label
-    slide.addText(String(row.name || "").substring(0, 25), {
-      x: x + 1,
-      y: y + index * 0.6,
-      w: 3,
-      h: 0.3,
-      fontSize: 11,
+    const label = `${String(row.name || "").substring(0, 10)}`;
+    slide.addText(label, {
+      x: legendX + 0.3,
+      y: legendY,
+      w: 1.6,
+      h: 0.2,
+      fontSize: 9,
       color: THEME.text,
       valign: "middle",
       fontFace: "Arial",
     });
 
-    // Percentage bar background
-    slide.addShape("rect", {
-      x: x + 4.2,
-      y: y + index * 0.6 + 0.05,
-      w: w - 4.2 - x - 0.3,
+    // Value
+    slide.addText(`${percent.toFixed(0)}%`, {
+      x: legendX + 2,
+      y: legendY,
+      w: 0.5,
       h: 0.2,
-      fill: { color: THEME.card },
-      line: { type: "none" },
-    });
-
-    // Percentage bar fill
-    slide.addShape("rect", {
-      x: x + 4.2,
-      y: y + index * 0.6 + 0.05,
-      w: ((w - 4.2 - x - 0.3) * percent) / 100,
-      h: 0.2,
-      fill: { color: colors[index % colors.length] },
-      line: { type: "none" },
-    });
-
-    // Percentage text
-    slide.addText(`${percent.toFixed(1)}%`, {
-      x: x + w - 0.8,
-      y: y + index * 0.6,
-      w: 0.7,
-      h: 0.3,
-      fontSize: 10,
-      color: THEME.text,
+      fontSize: 9,
+      bold: true,
+      color: THEME.accent,
       align: "right",
       valign: "middle",
       fontFace: "Arial",
