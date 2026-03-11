@@ -184,7 +184,7 @@ export default async function exportPptxHandler(req: Request, res: Response) {
         } else if (chartType === "line") {
           addLineChartVisualization(slide, prs, chart, 0.5, contentY, 9, contentHeight);
         } else if (chartType === "pie") {
-          addPieChartVisualization(slide, prs, chart, 0.5, contentY, 9, contentHeight);
+          await addPieChartVisualization(slide, prs, chart, 0.5, contentY, 9, contentHeight);
         } else {
           addTableVisualization(slide, prs, chart, 0.5, contentY, 9, contentHeight);
         }
@@ -445,7 +445,7 @@ function addLineChartVisualization(
   });
 }
 
-function addPieChartVisualization(
+async function addPieChartVisualization(
   slide: any,
   prs: any,
   chart: ChartData,
@@ -457,98 +457,91 @@ function addPieChartVisualization(
   const data = chart.data.slice(0, 6);
   if (data.length === 0) return;
 
-  const values = data.map((d: any) => {
-    const keys = Object.keys(d).filter((k) => k !== "name");
-    return Number(d[keys[0]] || 0);
+  // Extract pie data
+  const pieLabels = data.map((row: any) => String(row.name || "").substring(0, 20));
+  const pieValues = data.map((row: any) => {
+    const keys = Object.keys(row).filter((k) => k !== "name");
+    return Number(row[keys[0]] || 0);
   });
-  const total = values.reduce((a, b) => a + b, 0);
 
   const colors = [THEME.accent, THEME.accentLight, THEME.accentLighter, "#FF85B4", "#FFB8D9", "#FFC9DC"];
+  const totalValue = pieValues.reduce((a, b) => a + b, 0);
 
-  // Create visual pie chart with segments
-  const centerX = x + w * 0.32;
-  const centerY = y + h / 2;
-  const radius = Math.min(w * 0.25, h * 0.4);
+  // Draw a simple segmented bar representation (horizontal stacked bar)
+  const barHeight = Math.min(h * 0.3, 0.8);
+  const barY = y + h * 0.15;
+  let currentX = x;
 
-  // Draw pie segments
-  let currentAngle = -Math.PI / 2;
-  
-  data.forEach((row: any, index: number) => {
-    const value = values[index];
-    const sliceAngle = (value / total) * 2 * Math.PI;
-    const endAngle = currentAngle + sliceAngle;
-    const midAngle = (currentAngle + endAngle) / 2;
+  pieValues.forEach((value, index) => {
+    const segmentWidth = (value / totalValue) * w;
+    const percentage = ((value / totalValue) * 100).toFixed(0);
 
-    // Draw wedge using multiple rectangles
-    const steps = Math.max(3, Math.round(sliceAngle * 8));
-    for (let i = 0; i < steps; i++) {
-      const a1 = currentAngle + (sliceAngle * i) / steps;
-      const a2 = currentAngle + (sliceAngle * (i + 1)) / steps;
-      
-      const x1 = centerX + Math.cos(a1) * radius;
-      const y1 = centerY + Math.sin(a1) * radius;
-      const x2 = centerX + Math.cos(a2) * radius;
-      const y2 = centerY + Math.sin(a2) * radius;
+    // Draw segment
+    slide.addShape("rect", {
+      x: currentX,
+      y: barY,
+      w: segmentWidth,
+      h: barHeight,
+      fill: { color: colors[index % colors.length] },
+      line: { color: THEME.background, width: 1 },
+    });
 
-      slide.addShape("rect", {
-        x: Math.min(x1, x2),
-        y: Math.min(y1, y2),
-        w: Math.abs(x2 - x1) + 0.08,
-        h: Math.abs(y2 - y1) + 0.08,
-        fill: { color: colors[index % colors.length] },
-        line: { color: THEME.background, width: 1 },
+    // Add percentage label on segment
+    if (segmentWidth > 0.4) {
+      slide.addText(percentage + "%", {
+        x: currentX,
+        y: barY + (barHeight - 0.2) / 2,
+        w: segmentWidth,
+        h: 0.2,
+        fontSize: 9,
+        bold: true,
+        color: "#000000",
+        align: "center",
+        valign: "middle",
+        fontFace: "Arial",
       });
     }
 
-    currentAngle = endAngle;
+    currentX += segmentWidth;
   });
 
-  // Draw legend entries
-  const legendX = x + w * 0.68;
-  const legendStartY = y;
-  const legendItemHeight = h / Math.max(data.length, 1);
+  // Add legend below chart
+  let legendY = y + h * 0.65;
+  let legendX = x;
 
-  data.forEach((row: any, index: number) => {
-    const value = values[index];
-    const percent = total > 0 ? (value / total) * 100 : 0;
-    const legendY = legendStartY + index * legendItemHeight + 0.2;
+  pieLabels.forEach((label, index) => {
+    const legendValue = pieValues[index];
+    const percentage = ((legendValue / totalValue) * 100).toFixed(1);
+    const legendColor = colors[index % colors.length];
 
-    // Color dot
+    // Legend color square
     slide.addShape("rect", {
       x: legendX,
       y: legendY,
-      w: 0.2,
-      h: 0.2,
-      fill: { color: colors[index % colors.length] },
+      w: 0.15,
+      h: 0.15,
+      fill: { color: legendColor },
       line: { type: "none" },
     });
 
-    // Label
-    const label = `${String(row.name || "").substring(0, 10)}`;
-    slide.addText(label, {
-      x: legendX + 0.3,
+    // Legend text
+    const labelText = `${label} (${percentage}%)`;
+    slide.addText(labelText, {
+      x: legendX + 0.2,
       y: legendY,
-      w: 1.6,
+      w: w / 2 - 0.25,
       h: 0.2,
-      fontSize: 9,
+      fontSize: 8,
       color: THEME.text,
-      valign: "middle",
+      align: "left",
       fontFace: "Arial",
     });
 
-    // Value
-    slide.addText(`${percent.toFixed(0)}%`, {
-      x: legendX + 2,
-      y: legendY,
-      w: 0.5,
-      h: 0.2,
-      fontSize: 9,
-      bold: true,
-      color: THEME.accent,
-      align: "right",
-      valign: "middle",
-      fontFace: "Arial",
-    });
+    legendX += w / 2 + 0.1;
+    if (legendX > x + w) {
+      legendX = x;
+      legendY += 0.25;
+    }
   });
 }
 
