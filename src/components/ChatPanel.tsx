@@ -271,26 +271,34 @@ export function ChatPanel() {
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-gradient-to-b from-card/60 to-background/20">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 shrink-0">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <span className="font-semibold text-sm text-foreground">InsightAI Chat</span>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border/20 shrink-0">
+        <div className="flex items-center gap-3">
+          <motion.div
+            animate={{ rotate: [0, 360] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center"
+          >
+            <Sparkles className="h-4 w-4 text-primary" />
+          </motion.div>
+          <span className="font-bold text-sm text-foreground tracking-wide">AI Analytics</span>
         </div>
         {chatMessages.length > 0 && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={clearChat}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 hover:bg-destructive/10 rounded-lg"
             title="Clear conversation"
           >
             <Trash2 className="h-4 w-4" />
-          </button>
+          </motion.button>
         )}
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Dataset Intelligence Panel */}
         {datasetIntelligence && chatMessages.length === 0 && !isLoading && (
           <DatasetIntelligencePanel 
@@ -342,16 +350,16 @@ export function ChatPanel() {
           {chatMessages.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3 }}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm transition-all ${
                   msg.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "glass-panel text-foreground rounded-bl-md"
+                    ? "bg-gradient-to-br from-primary/90 to-accent/80 text-primary-foreground rounded-br-sm shadow-lg"
+                    : "glass-panel text-foreground rounded-bl-sm border border-border/30 hover:border-primary/30"
                 }`}
               >
                 {msg.role === "assistant" ? (
@@ -359,9 +367,9 @@ export function ChatPanel() {
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
-                  <p>{msg.content}</p>
+                  <p className="font-medium">{msg.content}</p>
                 )}
-                <p className="text-[10px] mt-1.5 opacity-50">
+                <p className="text-[10px] mt-1.5 opacity-60 font-medium">
                   {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
@@ -401,23 +409,25 @@ export function ChatPanel() {
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-border/40 shrink-0">
-        <div className="flex items-center gap-2 glass-panel p-1.5 rounded-xl">
+      <div className="p-4 border-t border-border/20 shrink-0 bg-gradient-to-t from-card/60 to-transparent">
+        <div className="flex items-center gap-2 glass-panel p-1.5 rounded-xl border border-border/40 hover:border-primary/30 transition-colors">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
-            placeholder={datasetLoaded ? "Ask about your data..." : "Upload a dataset first..."}
-            className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-sm px-3 py-2"
+            placeholder={datasetLoaded ? "Ask anything about your data..." : "Upload a dataset first..."}
+            className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground/70 text-sm px-3 py-2.5 font-medium"
             disabled={isLoading || !datasetLoaded}
           />
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || isLoading || !datasetLoaded}
-            className="h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-30 shrink-0"
+            className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground flex items-center justify-center hover:shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 font-bold"
           >
             <Send className="h-4 w-4" />
-          </button>
+          </motion.button>
         </div>
       </div>
     </div>

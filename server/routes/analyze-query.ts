@@ -333,7 +333,7 @@ Sample rows: ${JSON.stringify(sampleData?.slice(0, 8))}`;
           Authorization: `Bearer ${GROK_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "grok-2",
+          model: "grok-beta",
           messages: [
             {
               role: "user",
