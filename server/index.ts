@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import analyzeQueryHandler from "./routes/analyze-query.js";
 import analyzeDatasetHandler from "./routes/analyze-dataset.js";
 import generateReportHandler from "./routes/generate-report.js";
+import exportPptxHandler from "./routes/export-pptx.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -17,6 +18,7 @@ app.use(express.json({ limit: "50mb" }));
 app.post("/api/analyze-query", analyzeQueryHandler);
 app.post("/api/analyze-dataset", analyzeDatasetHandler);
 app.post("/api/generate-report", generateReportHandler);
+app.post("/api/export/pptx", exportPptxHandler);
 
 if (process.env.NODE_ENV === "production") {
   const distPath = path.resolve(__dirname, "../dist/public");

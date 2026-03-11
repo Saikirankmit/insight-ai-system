@@ -5,6 +5,7 @@ import { SQLViewer } from "@/components/SQLViewer";
 import { InsightSummaryPanel } from "@/components/InsightSummary";
 import { QuerySuggestionsPanel } from "@/components/QuerySuggestions";
 import { BusinessReportGenerator } from "@/components/BusinessReportGenerator";
+import { ExportPowerPointButton } from "@/components/ExportPowerPointButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart3, Sparkles } from "lucide-react";
 
@@ -93,6 +94,11 @@ export function DashboardPanel() {
               dashboardData={currentDashboard}
               datasetName={datasetName}
             />
+
+            {/* Export PowerPoint */}
+            <div className="flex gap-2">
+              <ExportPowerPointButton />
+            </div>
           </motion.div>
         </AnimatePresence>
       )}
